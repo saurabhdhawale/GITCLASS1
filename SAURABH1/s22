@@ -1,0 +1,38 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import explode
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Diabetes and Asthma Analysis") \
+    .getOrCreate()
+
+# Load JSON data into DataFrame
+json_data = spark.read.json("your_json_file.json")
+
+# Explode the 'problems' array
+problems_df = json_data.select(explode("problems").alias("problem"))
+
+# Filter for Diabetes
+diabetes_df = problems_df.filter("problem like '%Diabetes%'")
+
+# Extract medications information
+medications_df = diabetes_df.select(explode("problem.Diabetes.medications.medicationsClasses").alias("med_class"))
+
+# Extract medication details
+medication_details_df = medications_df.select(
+    explode("med_class.className").alias("class_name"),
+    explode("med_class.className.associatedDrug").alias("drug")
+)
+
+# Select relevant columns
+final_df = medication_details_df.select(
+    "class_name",
+    "drug.name",
+    "drug.strength"
+)
+
+# Show the result
+final_df.show(truncate=False)
+
+# Stop Spark session
+spark.stop()
